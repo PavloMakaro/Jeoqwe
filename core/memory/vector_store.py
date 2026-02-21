@@ -1,6 +1,6 @@
 import os
 import json
-import numpy as np
+import math
 from typing import List, Dict, Any
 
 class SimpleVectorStore:
@@ -42,6 +42,20 @@ class SimpleVectorStore:
         self.documents.append(doc)
         self.save()
 
+    def _cosine_similarity(self, v1: List[float], v2: List[float]) -> float:
+        """Calculate cosine similarity between two vectors using pure Python."""
+        if len(v1) != len(v2):
+            return 0.0
+
+        dot_product = sum(a * b for a, b in zip(v1, v2))
+        magnitude_v1 = math.sqrt(sum(a * a for a in v1))
+        magnitude_v2 = math.sqrt(sum(b * b for b in v2))
+
+        if magnitude_v1 == 0 or magnitude_v2 == 0:
+            return 0.0
+
+        return dot_product / (magnitude_v1 * magnitude_v2)
+
     def search(self, query_embedding: List[float], top_k=3, threshold=0.0) -> List[Dict]:
         if not self.documents:
             return []
@@ -49,38 +63,21 @@ class SimpleVectorStore:
         if not query_embedding:
             return []
 
-        # Filter out docs with invalid embeddings
-        valid_docs = [d for d in self.documents if d.get("embedding") and len(d["embedding"]) == len(query_embedding)]
-
-        if not valid_docs:
-            return []
-
-        embeddings = np.array([d["embedding"] for d in valid_docs])
-        query = np.array(query_embedding)
-
-        # Cosine Similarity: (A . B) / (||A|| * ||B||)
-        norm_docs = np.linalg.norm(embeddings, axis=1)
-        norm_query = np.linalg.norm(query)
-
-        # Avoid division by zero
-        norm_docs[norm_docs == 0] = 1e-10
-        if norm_query == 0:
-            norm_query = 1e-10
-
-        similarities = np.dot(embeddings, query) / (norm_docs * norm_query)
-
-        # Get top K indices
-        # argsort sorts in ascending order, so we take the last k and reverse
-        top_indices = np.argsort(similarities)[-top_k:][::-1]
-
         results = []
-        for idx in top_indices:
-            score = similarities[idx]
+        for doc in self.documents:
+            embedding = doc.get("embedding")
+            if not embedding or len(embedding) != len(query_embedding):
+                continue
+
+            score = self._cosine_similarity(query_embedding, embedding)
             if score >= threshold:
                 results.append({
-                    "text": valid_docs[idx]["text"],
-                    "metadata": valid_docs[idx]["metadata"],
-                    "score": float(score)
+                    "text": doc["text"],
+                    "metadata": doc.get("metadata", {}),
+                    "score": score
                 })
 
-        return results
+        # Sort by score descending
+        results.sort(key=lambda x: x["score"], reverse=True)
+
+        return results[:top_k]

@@ -35,7 +35,7 @@ class Agent:
                 system_msg = self.system_prompt
 
         if plan_mode:
-            system_msg += "\n\n[PLAN MODE]: You are in Autonomous Plan Mode. 1. First, analyze the request and list the steps needed. 2. Execute the steps using available tools. 3. Reflect on tool outputs and adjust the plan if needed. 4. Only when the task is fully complete, provide the final answer. You determine when to stop."
+            system_msg += "\n\n[PLAN MODE ENABLED]: You are in Autonomous Plan Mode. 1. First, analyze the request and list the steps needed. 2. Execute the steps using available tools. 3. Reflect on tool outputs and adjust the plan if needed. 4. Only when the task is fully complete, provide the final answer. You determine when to stop."
 
         messages = [{"role": "system", "content": system_msg}]
         messages.extend(history)
@@ -53,7 +53,7 @@ class Agent:
         if not history or history[-1]["role"] != "user":
             history.append({"role": "user", "content": user_input})
 
-        max_turns = 100 # Effectively removed hard limit (safety cap)
+        max_turns = 100 # Safety cap (effectively unlimited for normal tasks)
         turn = 0
 
         definitions = self.tools.get_definitions()
@@ -185,4 +185,4 @@ class Agent:
                 yield {"status": "final", "content": response_content}
                 return
 
-        yield {"status": "final", "content": "Error: Maximum turns reached."}
+        yield {"status": "final", "content": "Error: Maximum turns reached (safety limit)."}

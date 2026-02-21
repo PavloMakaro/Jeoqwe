@@ -18,7 +18,7 @@ class TelegramRenderer:
         try:
             msg = await self.bot.send_message(
                 chat_id=self.chat_id,
-                text="Thinking...",
+                text="🧠 *Thinking...*",
                 parse_mode=constants.ParseMode.MARKDOWN
             )
             self.message_id = msg.message_id
@@ -110,18 +110,22 @@ class TelegramRenderer:
         for item in self.buffer:
             if item['type'] == 'tool_use':
                 tool_name = item['content'].get('tool', 'Unknown')
-                logs.append(f"🔧 Executing: {tool_name}...")
+                args = item['content'].get('args', {})
+                # Format args nicely
+                args_str = str(args)
+                if len(args_str) > 50: args_str = args_str[:50] + "..."
+                logs.append(f"🔧 *Exec:* `{tool_name}`\n   `{args_str}`")
             elif item['type'] == 'observation':
                 result = item['content'].replace("Tool '", "").replace("' output:", "") # Cleanup
                 # Truncate
-                if len(result) > 50: result = result[:50] + "..."
-                logs.append(f"  ↳ Result: {result}")
+                if len(result) > 100: result = result[:100] + "..."
+                logs.append(f"   ↳ *Result:* `{result}`")
 
         if logs:
-            # Show last 8 lines
-            visible_logs = logs[-8:]
+            # Show last 6 log items to save space
+            visible_logs = logs[-6:]
             log_block = "\n".join(visible_logs)
-            display_text += f"```\n{log_block}\n```\n"
+            display_text += f"{log_block}\n\n"
 
         # 2. Main Content (Stream)
         # Find the final stream
@@ -134,7 +138,7 @@ class TelegramRenderer:
             display_text += final_content
         else:
             if not logs:
-                display_text = "Thinking..."
+                display_text = "🧠 *Thinking...*"
 
         # Truncate to Telegram limit (4096)
         if len(display_text) > 4000:
