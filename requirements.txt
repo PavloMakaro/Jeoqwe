@@ -8,9 +8,7 @@ pydub
 watchdog
 tavily-python
 numpy
-opencv-python-headless
 aiohttp
 python-pptx
-pandas
 groq
 pytz
